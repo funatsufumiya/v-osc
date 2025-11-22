@@ -20,19 +20,20 @@ import time
 // )
 
 const secondsFrom1900To1970  = 2208988800                      // Source: RFC 868
-const nanosecondsPerFraction = f64(0.23283064365386962891) // 1e9/(2^32)
+const nanosecondsPerFraction = f64(0.23283064365386962891)    // 1e9/(2^32)
 const bundleTagString       = "#bundle"
 
 // Packet is the interface for Message and Bundle.
-interface Packet {
+pub interface Packet {
 	encoding.BinaryMarshaler
 }
 
 // Message represents a single OSC message. An OSC message consists of an OSC
 // address pattern and zero or more arguments.
-struct Message {
-	Address   string
-	Arguments []interface{}
+pub struct Message {
+pub mut:
+	address   string
+	arguments []interface{}
 }
 
 // Verify that Messages implements the Packet interface.
@@ -42,10 +43,11 @@ var _ Packet = (*Message)(nil)
 // followed by an OSC Time Tag, followed by zero or more OSC bundle/message
 // elements. The OSC-timetag is a 64-bit fixed point time tag. See
 // http://opensoundcontrol.org/spec-1_0 for more information.
-struct Bundle {
-	Timetag  Timetag
-	Messages []*Message
-	Bundles  []*Bundle
+pub struct Bundle {
+pub mut:
+	timetag  Timetag
+	messages []*Message
+	bundles  []*Bundle
 }
 
 // Verify that Bundle implements the Packet interface.
@@ -53,7 +55,7 @@ var _ Packet = (*Bundle)(nil)
 
 // Client enables you to send OSC packets. It sends OSC messages and bundles to
 // the given IP address and port.
-struct Client {
+pub struct Client {
 	ip    string
 	port  int
 	laddr *net.UDPAddr
@@ -61,10 +63,11 @@ struct Client {
 
 // Server represents an OSC server. The server listens on Address and Port for
 // incoming OSC packets and bundles.
-struct Server {
-	Addr        string
-	Dispatcher  Dispatcher
-	ReadTimeout time.Duration
+pub struct Server {
+pub mut:
+	addr        string
+	dispatcher  Dispatcher
+	read_timeout time.Duration
 	close       func() error
 }
 
@@ -74,10 +77,11 @@ struct Server {
 // specify the number of seconds since midnight on January 1, 1900, and the
 // last 32 bits specify fractional parts of a second to a precision of about
 // 200 picoseconds. This is the representation used by Internet NTP timestamps.
-struct Timetag {
-	timeTag  uint64 // The acutal time tag
+pub struct Timetag {
+pub mut:
+	time_tag  uint64 // The acutal time tag
 	time     time.Time
-	MinValue uint64 // Minimum value of an OSC Time Tag. Is always 1.
+	min_value uint64 // Minimum value of an OSC Time Tag. Is always 1.
 }
 
 // Dispatcher is an interface for an OSC message dispatcher. A dispatcher is
@@ -98,7 +102,7 @@ type HandlerFunc func(msg *Message)
 
 // HandleMessage calls itself with the given OSC Message. Implements the
 // Handler interface.
-fn (f HandlerFunc) HandleMessage(msg *Message) {
+fn (f HandlerFunc) handle_message(msg *Message) {
 	f(msg)
 }
 
@@ -108,18 +112,18 @@ fn (f HandlerFunc) HandleMessage(msg *Message) {
 
 // StandardDispatcher is a dispatcher for OSC packets. It handles the dispatching of
 // received OSC packets to Handlers for their given address.
-struct StandardDispatcher {
+pub struct StandardDispatcher {
 	handlers       map[string]Handler
 	defaultHandler Handler
 }
 
 // NewStandardDispatcher returns an StandardDispatcher.
-fn NewStandardDispatcher() *StandardDispatcher {
+pub fn new_standard_dispatcher() *StandardDispatcher {
 	return &StandardDispatcher{handlers: make(map[string]Handler)}
 }
 
 // AddMsgHandler adds a new message handler for the given OSC address.
-fn (s *StandardDispatcher) AddMsgHandler(addr string, handler HandlerFunc) error {
+pub fn (s *StandardDispatcher) AddMsgHandler(addr string, handler HandlerFunc) error {
 	if addr == "*" {
 		s.defaultHandler = handler
 		return nil
@@ -139,7 +143,7 @@ fn (s *StandardDispatcher) AddMsgHandler(addr string, handler HandlerFunc) error
 }
 
 // Dispatch dispatches OSC packets. Implements the Dispatcher interface.
-fn (s *StandardDispatcher) Dispatch(packet Packet) {
+pub fn (s *StandardDispatcher) dispatch(packet Packet) {
 	switch p := packet.(type) {
 	default:
 		return
@@ -147,26 +151,26 @@ fn (s *StandardDispatcher) Dispatch(packet Packet) {
 	case *Message:
 		for addr, handler := range s.handlers {
 			if p.Match(addr) {
-				handler.HandleMessage(p)
+				handler.handle_message(p)
 			}
 		}
 		if s.defaultHandler != nil {
-			s.defaultHandler.HandleMessage(p)
+			s.defaultHandler.handle_message(p)
 		}
 
 	case *Bundle:
-		timer := time.NewTimer(p.Timetag.ExpiresIn())
+		timer := time.new_timer(p.Timetag.ExpiresIn())
 
 		go func() {
 			<-timer.C
 			for _, message := range p.Messages {
 				for address, handler := range s.handlers {
 					if message.Match(address) {
-						handler.HandleMessage(message)
+						handler.handle_message(message)
 					}
 				}
 				if s.defaultHandler != nil {
-					s.defaultHandler.HandleMessage(message)
+					s.defaultHandler.handle_message(message)
 				}
 			}
 
@@ -183,42 +187,42 @@ fn (s *StandardDispatcher) Dispatch(packet Packet) {
 ////
 
 // NewMessage returns a new Message. The address parameter is the OSC address.
-fn NewMessage(addr string, args ...interface{}) *Message {
+pub fn new_message(addr string, args ...interface{}) *Message {
 	return &Message{Address: addr, Arguments: args}
 }
 
 // Append appends the given arguments to the arguments list.
-fn (msg *Message) Append(args ...interface{}) {
+pub fn (msg *Message) append(args ...interface{}) {
 	msg.Arguments = append(msg.Arguments, args...)
 }
 
 // Equals returns true if the given OSC Message `m` is equal to the current OSC
 // Message. It checks if the OSC address and the arguments are equal. Returns
 // true if the current object and `m` are equal.
-fn (msg *Message) Equals(m *Message) bool {
-	return reflect.DeepEqual(msg, m)
+pub fn (msg *Message) equals(m *Message) bool {
+	return reflect.deep_equal(msg, m)
 }
 
 // Clear clears the OSC address and all arguments.
-fn (msg *Message) Clear() {
+pub fn (msg *Message) clear() {
 	msg.Address = ""
 	msg.ClearData()
 }
 
 // ClearData removes all arguments from the OSC Message.
-fn (msg *Message) ClearData() {
-	msg.Arguments = msg.Arguments[len(msg.Arguments):]
+pub fn (msg *Message) clear_data() {
+	msg.Arguments = msg.arguments[len(msg.Arguments):]
 }
 
 // Match returns true, if the OSC address pattern of the OSC Message matches the given
 // address. The match is case sensitive!
-fn (msg *Message) Match(addr string) bool {
+pub fn (msg *Message) Match(addr string) bool {
 	exp := getRegEx(msg.Address)
 	return exp.MatchString(addr)
 }
 
 // TypeTags returns the type tag string.
-fn (msg *Message) TypeTags() (string, error) {
+pub fn (msg *Message) TypeTags() (string, error) {
 	if msg == nil {
 		return "", fmt.Errorf("message is nil")
 	}
@@ -236,7 +240,7 @@ fn (msg *Message) TypeTags() (string, error) {
 }
 
 // String implements the fmt.Stringer interface.
-fn (msg *Message) String() string {
+pub fn (msg *Message) String() string {
 	if msg == nil {
 		return ""
 	}
@@ -276,7 +280,7 @@ fn (msg *Message) String() string {
 }
 
 // CountArguments returns the number of arguments.
-fn (msg *Message) CountArguments() int {
+pub fn (msg *Message) CountArguments() int {
 	return len(msg.Arguments)
 }
 
@@ -285,7 +289,7 @@ fn (msg *Message) CountArguments() int {
 // 1. OSC Address Pattern
 // 2. OSC Type Tag String
 // 3. OSC Arguments
-fn (msg *Message) MarshalBinary() ([]byte, error) {
+pub fn (msg *Message) MarshalBinary() ([]byte, error) {
 	// We can start with the OSC address and add it to the buffer
 	data := new(bytes.Buffer)
 	if _, err := writePaddedString(msg.Address, data); err != nil {
@@ -381,12 +385,12 @@ fn (msg *Message) MarshalBinary() ([]byte, error) {
 
 // NewBundle returns an OSC Bundle. Use this function to create a new OSC
 // Bundle.
-fn NewBundle(time time.Time) *Bundle {
+pub fn NewBundle(time time.Time) *Bundle {
 	return &Bundle{Timetag: *NewTimetag(time)}
 }
 
 // Append appends an OSC bundle or OSC message to the bundle.
-fn (b *Bundle) Append(pck Packet) error {
+pub fn (b *Bundle) append(pck Packet) error {
 	switch t := pck.(type) {
 	default:
 		return fmt.Errorf("unsupported OSC packet type: only Bundle and Message are supported")
@@ -409,7 +413,7 @@ fn (b *Bundle) Append(pck Packet) error {
 // 4. First bundle element
 // 5. Length of n OSC bundle element
 // 6. n bundle element
-fn (b *Bundle) MarshalBinary() ([]byte, error) {
+pub fn (b *Bundle) MarshalBinary() ([]byte, error) {
 	// Add the '#bundle' string
 	data := new(bytes.Buffer)
 	if _, err := writePaddedString("#bundle", data); err != nil {
@@ -473,24 +477,24 @@ fn (b *Bundle) MarshalBinary() ([]byte, error) {
 // messages and OSC bundles over an UDP network connection. The `ip` argument
 // specifies the IP address and `port` defines the target port where the
 // messages and bundles will be send to.
-fn NewClient(ip string, port int) *Client {
+pub fn NewClient(ip string, port int) *Client {
 	return &Client{ip: ip, port: port, laddr: nil}
 }
 
 // IP returns the IP address.
-fn (c *Client) IP() string { return c.ip }
+pub fn (c *Client) IP() string { return c.ip }
 
 // SetIP sets a new IP address.
-fn (c *Client) SetIP(ip string) { c.ip = ip }
+pub fn (c *Client) SetIP(ip string) { c.ip = ip }
 
 // Port returns the port.
-fn (c *Client) Port() int { return c.port }
+pub fn (c *Client) Port() int { return c.port }
 
 // SetPort sets a new port.
-fn (c *Client) SetPort(port int) { c.port = port }
+pub fn (c *Client) SetPort(port int) { c.port = port }
 
 // SetLocalAddr sets the local address.
-fn (c *Client) SetLocalAddr(ip string, port int) error {
+pub fn (c *Client) SetLocalAddr(ip string, port int) error {
 	laddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
 		return err
@@ -500,7 +504,7 @@ fn (c *Client) SetLocalAddr(ip string, port int) error {
 }
 
 // Send sends an OSC Bundle or an OSC Message.
-fn (c *Client) Send(packet Packet) error {
+pub fn (c *Client) Send(packet Packet) error {
 	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", c.ip, c.port))
 	if err != nil {
 		return err
@@ -528,7 +532,7 @@ fn (c *Client) Send(packet Packet) error {
 
 // ListenAndServe retrieves incoming OSC packets and dispatches the retrieved
 // OSC packets.
-fn (s *Server) ListenAndServe() error {
+pub fn (s *Server) ListenAndServe() error {
 	defer s.CloseConnection()
 
 	if s.Dispatcher == nil {
@@ -547,7 +551,7 @@ fn (s *Server) ListenAndServe() error {
 
 // Serve retrieves incoming OSC packets from the given connection and dispatches
 // retrieved OSC packets. If something goes wrong an error is returned.
-fn (s *Server) Serve(c net.PacketConn) error {
+pub fn (s *Server) Serve(c net.PacketConn) error {
 	var tempDelay time.Duration
 	for {
 		msg, err := s.readFromConnection(c)
@@ -575,7 +579,7 @@ fn (s *Server) Serve(c net.PacketConn) error {
 //
 // This causes a "use of closed network connection" error the next time the
 // server attempts to read from the connection.
-fn (s *Server) CloseConnection() error {
+pub fn (s *Server) CloseConnection() error {
 	if s.close == nil {
 		return nil
 	}
@@ -593,7 +597,7 @@ fn (s *Server) CloseConnection() error {
 }
 
 // ReceivePacket listens for incoming OSC packets and returns the packet if one is received.
-fn (s *Server) ReceivePacket(c net.PacketConn) (Packet, error) {
+pub fn (s *Server) ReceivePacket(c net.PacketConn) (Packet, error) {
 	return s.readFromConnection(c)
 }
 
@@ -611,7 +615,7 @@ fn (s *Server) readFromConnection(c net.PacketConn) (Packet, error) {
 		return nil, err
 	}
 
-	p, err := readPacket(bufio.NewReader(bytes.NewBuffer(data[0:n])))
+	p, err := readPacket(bufio.new_reader(bytes.new_buffer(data[0:n])))
 	if err != nil {
 		return nil, err
 	}
@@ -619,8 +623,8 @@ fn (s *Server) readFromConnection(c net.PacketConn) (Packet, error) {
 }
 
 // ParsePacket parses the given msg string and returns a Packet
-fn ParsePacket(msg string) (Packet, error) {
-	p, err := readPacket(bufio.NewReader(bytes.NewBufferString(msg)))
+pub fn ParsePacket(msg string) (Packet, error) {
+	p, err := readPacket(bufio.new_reader(bytes.new_bufferString(msg)))
 	if err != nil {
 		return nil, err
 	}
@@ -807,7 +811,7 @@ fn readArguments(msg *Message, reader *bufio.Reader) error {
 ////
 
 // NewTimetag returns a new OSC time tag object.
-fn NewTimetag(ts time.Time) *Timetag {
+pub fn NewTimetag(ts time.Time) *Timetag {
 	return &Timetag{
 		time:     ts,
 		timeTag:  timeToTimetag(ts),
@@ -815,35 +819,35 @@ fn NewTimetag(ts time.Time) *Timetag {
 }
 
 // NewTimetagFromTimetag creates a new Timetag from the given `timetag`.
-fn NewTimetagFromTimetag(timetag uint64) *Timetag {
+pub fn NewTimetagFromTimetag(timetag uint64) *Timetag {
 	time := timetagToTime(timetag)
 	return NewTimetag(time)
 }
 
 // Time returns the time.
-fn (t *Timetag) Time() time.Time {
+pub fn (t *Timetag) Time() time.Time {
 	return t.time
 }
 
 // FractionalSecond returns the last 32 bits of the OSC time tag. Specifies the
 // fractional part of a second.
-fn (t *Timetag) FractionalSecond() uint32 {
+pub fn (t *Timetag) FractionalSecond() uint32 {
 	return uint32(t.timeTag << 32)
 }
 
 // SecondsSinceEpoch returns the first 32 bits (the number of seconds since the
 // midnight 1900) from the OSC time tag.
-fn (t *Timetag) SecondsSinceEpoch() uint32 {
+pub fn (t *Timetag) SecondsSinceEpoch() uint32 {
 	return uint32(t.timeTag >> 32)
 }
 
 // TimeTag returns the time tag value
-fn (t *Timetag) TimeTag() uint64 {
+pub fn (t *Timetag) TimeTag() uint64 {
 	return t.timeTag
 }
 
 // MarshalBinary converts the OSC time tag to a byte array.
-fn (t *Timetag) MarshalBinary() ([]byte, error) {
+pub fn (t *Timetag) MarshalBinary() ([]byte, error) {
 	data := new(bytes.Buffer)
 	if err := binary.Write(data, binary.BigEndian, t.timeTag); err != nil {
 		return []byte{}, err
@@ -852,7 +856,7 @@ fn (t *Timetag) MarshalBinary() ([]byte, error) {
 }
 
 // SetTime sets the value of the OSC time tag.
-fn (t *Timetag) SetTime(time time.Time) {
+pub fn (t *Timetag) SetTime(time time.Time) {
 	t.time = time
 	t.timeTag = timeToTimetag(time)
 }
@@ -860,7 +864,7 @@ fn (t *Timetag) SetTime(time time.Time) {
 // ExpiresIn calculates the number of seconds until the current time is the
 // same as the value of the time tag. It returns zero if the value of the
 // time tag is in the past.
-fn (t *Timetag) ExpiresIn() time.Duration {
+pub fn (t *Timetag) ExpiresIn() time.Duration {
 	// If the timetag is one the OSC method must be invoke immediately.
 	// See https://ccrma.stanford.edu/groups/osc/spec-1_0.html#timetags.
 	if t.timeTag <= 1 {
@@ -1054,7 +1058,7 @@ fn padBytesNeeded(elementLen int) int {
 ////
 
 // PrintMessage pretty prints an OSC message to the standard output.
-fn PrintMessage(msg *Message) {
+pub fn PrintMessage(msg *Message) {
 	fmt.Println(msg)
 }
 

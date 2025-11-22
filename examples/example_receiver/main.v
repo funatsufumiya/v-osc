@@ -2,14 +2,14 @@ import osc
 
 fn main(){
 	addr := "127.0.0.1:8765"
-    d := osc.NewStandardDispatcher()
-    d.AddMsgHandler("/message/address", fn(msg *osc.Message) {
-        osc.PrintMessage(msg)
+    d := osc.new_standard_dispatcher()
+    d.add_msg_handler("/message/address", fn(msg *osc.Message) {
+        osc.print_message(msg)
     })
 
     server := &osc.Server{
-        Addr: addr,
-        Dispatcher:d,
+        addr: addr,
+        dispatcher: d,
     }
-    server.ListenAndServe()
+    server.listen_and_serve()
 }
