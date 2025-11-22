@@ -1,4 +1,4 @@
-# GoOSC
+# V OSC
 
 [Open Sound Control (OSC)](http://opensoundcontrol.org) library for V language. Implemented in pure V.
 
