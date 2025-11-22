@@ -69,7 +69,7 @@ OSC server example:
 
     addr := "127.0.0.1:8765"
     d := osc.NewStandardDispatcher()
-    d.AddMsgHandler("/message/address", func(msg *osc.Message) {
+    d.AddMsgHandler("/message/address", fn(msg *osc.Message) {
         osc.PrintMessage(msg)
     })
 

@@ -38,7 +38,7 @@ see [examples/example_sender/main.v](./examples/example_sender/main.v)
 ```go
 import osc
 
-func main() {
+fn main() {
     client := osc.NewClient("localhost", 8765)
     msg := osc.NewMessage("/osc/address")
     msg.Append(int32(111))
@@ -57,10 +57,10 @@ package main
 
 import osc
 
-func main() {
+fn main() {
     addr := "127.0.0.1:8765"
     d := osc.NewStandardDispatcher()
-    d.AddMsgHandler("/message/address", func(msg *osc.Message) {
+    d.AddMsgHandler("/message/address", fn(msg *osc.Message) {
         osc.PrintMessage(msg)
     })
 
