@@ -2,6 +2,9 @@
 // messages. The package is implemented in pure Go.
 module osc
 
+import net
+import time
+
 // import (
 // 	"bufio"
 // 	"bytes"
@@ -16,20 +19,18 @@ module osc
 // 	"time"
 // )
 
-const (
-	secondsFrom1900To1970  = 2208988800                      // Source: RFC 868
-	nanosecondsPerFraction = float64(0.23283064365386962891) // 1e9/(2^32)
-	bundleTagString        = "#bundle"
-)
+const secondsFrom1900To1970  = 2208988800                      // Source: RFC 868
+const nanosecondsPerFraction = f64(0.23283064365386962891) // 1e9/(2^32)
+const bundleTagString       = "#bundle"
 
 // Packet is the interface for Message and Bundle.
-type Packet interface {
+interface Packet {
 	encoding.BinaryMarshaler
 }
 
 // Message represents a single OSC message. An OSC message consists of an OSC
 // address pattern and zero or more arguments.
-type Message struct {
+struct Message {
 	Address   string
 	Arguments []interface{}
 }
@@ -41,7 +42,7 @@ var _ Packet = (*Message)(nil)
 // followed by an OSC Time Tag, followed by zero or more OSC bundle/message
 // elements. The OSC-timetag is a 64-bit fixed point time tag. See
 // http://opensoundcontrol.org/spec-1_0 for more information.
-type Bundle struct {
+struct Bundle {
 	Timetag  Timetag
 	Messages []*Message
 	Bundles  []*Bundle
@@ -52,7 +53,7 @@ var _ Packet = (*Bundle)(nil)
 
 // Client enables you to send OSC packets. It sends OSC messages and bundles to
 // the given IP address and port.
-type Client struct {
+struct Client {
 	ip    string
 	port  int
 	laddr *net.UDPAddr
@@ -60,7 +61,7 @@ type Client struct {
 
 // Server represents an OSC server. The server listens on Address and Port for
 // incoming OSC packets and bundles.
-type Server struct {
+struct Server {
 	Addr        string
 	Dispatcher  Dispatcher
 	ReadTimeout time.Duration
@@ -73,7 +74,7 @@ type Server struct {
 // specify the number of seconds since midnight on January 1, 1900, and the
 // last 32 bits specify fractional parts of a second to a precision of about
 // 200 picoseconds. This is the representation used by Internet NTP timestamps.
-type Timetag struct {
+struct Timetag {
 	timeTag  uint64 // The acutal time tag
 	time     time.Time
 	MinValue uint64 // Minimum value of an OSC Time Tag. Is always 1.
@@ -81,13 +82,13 @@ type Timetag struct {
 
 // Dispatcher is an interface for an OSC message dispatcher. A dispatcher is
 // responsible for dispatching received OSC messages.
-type Dispatcher interface {
+interface Dispatcher {
 	Dispatch(packet Packet)
 }
 
 // Handler is an interface for message handlers. Every handler implementation
 // for an OSC message must implement this interface.
-type Handler interface {
+interface Handler {
 	HandleMessage(msg *Message)
 }
 
@@ -107,7 +108,7 @@ fn (f HandlerFunc) HandleMessage(msg *Message) {
 
 // StandardDispatcher is a dispatcher for OSC packets. It handles the dispatching of
 // received OSC packets to Handlers for their given address.
-type StandardDispatcher struct {
+struct StandardDispatcher {
 	handlers       map[string]Handler
 	defaultHandler Handler
 }
