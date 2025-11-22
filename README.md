@@ -74,6 +74,6 @@ func main() {
 
 ## Tests
 
-```shell
-v test
+```bash
+$ v test .
 ```
