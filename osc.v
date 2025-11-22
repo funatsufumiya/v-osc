@@ -1,20 +1,20 @@
 // Package osc provides a package for sending and receiving OpenSoundControl
 // messages. The package is implemented in pure Go.
-package osc
+module osc
 
-import (
-	"bufio"
-	"bytes"
-	"encoding"
-	"encoding/binary"
-	"errors"
-	"fmt"
-	"net"
-	"reflect"
-	"regexp"
-	"strings"
-	"time"
-)
+// import (
+// 	"bufio"
+// 	"bytes"
+// 	"encoding"
+// 	"encoding/binary"
+// 	"errors"
+// 	"fmt"
+// 	"net"
+// 	"reflect"
+// 	"regexp"
+// 	"strings"
+// 	"time"
+// )
 
 const (
 	secondsFrom1900To1970  = 2208988800                      // Source: RFC 868

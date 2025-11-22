@@ -79,4 +79,4 @@ OSC server example:
     }
     server.ListenAndServe()
 */
-package osc
+module osc
