@@ -35,7 +35,7 @@ $ git clone https://github.com/funatsufumiya/v-osc ~/.vmodules/osc
 
 see [examples/example_sender/main.v](./examples/example_sender/main.v)
 
-```go
+```v
 import osc
 
 fn main() {
@@ -52,9 +52,7 @@ fn main() {
 
 see [examples/example_receiver/main.v](./examples/example_receiver/main.v)
 
-```go
-package main
-
+```v
 import osc
 
 fn main() {
