@@ -123,19 +123,19 @@ pub fn new_standard_dispatcher() *StandardDispatcher {
 }
 
 // AddMsgHandler adds a new message handler for the given OSC address.
-pub fn (s *StandardDispatcher) AddMsgHandler(addr string, handler HandlerFunc) error {
+pub fn (s *StandardDispatcher) add_msg_handler(addr string, handler HandlerFunc) error {
 	if addr == "*" {
 		s.defaultHandler = handler
 		return nil
 	}
 	for _, chr := range "*?,[]{}# " {
 		if strings.Contains(addr, fmt.Sprintf("%c", chr)) {
-			return errors.New("OSC Address string may not contain any characters in \"*?,[]{}#")
+			return errors.new("OSC Address string may not contain any characters in \"*?,[]{}#")
 		}
 	}
 
-	if addressExists(addr, s.handlers) {
-		return errors.New("OSC address exists already")
+	if address_exists(addr, s.handlers) {
+		return errors.new("OSC address exists already")
 	}
 
 	s.handlers[addr] = handler
@@ -150,7 +150,7 @@ pub fn (s *StandardDispatcher) dispatch(packet Packet) {
 
 	case *Message:
 		for addr, handler := range s.handlers {
-			if p.Match(addr) {
+			if p.matches(addr) {
 				handler.handle_message(p)
 			}
 		}
@@ -159,13 +159,13 @@ pub fn (s *StandardDispatcher) dispatch(packet Packet) {
 		}
 
 	case *Bundle:
-		timer := time.new_timer(p.Timetag.ExpiresIn())
+		timer := time.new_timer(p.Timetag.expires_in())
 
 		go func() {
 			<-timer.C
 			for _, message := range p.Messages {
 				for address, handler := range s.handlers {
-					if message.Match(address) {
+					if message.matches(address) {
 						handler.handle_message(message)
 					}
 				}
@@ -176,7 +176,7 @@ pub fn (s *StandardDispatcher) dispatch(packet Packet) {
 
 			// Process all bundles
 			for _, b := range p.Bundles {
-				s.Dispatch(b)
+				s.dispatch(b)
 			}
 		}()
 	}
@@ -214,22 +214,22 @@ pub fn (msg *Message) clear_data() {
 	msg.Arguments = msg.arguments[len(msg.Arguments):]
 }
 
-// Match returns true, if the OSC address pattern of the OSC Message matches the given
+// matches returns true, if the OSC address pattern of the OSC Message matches the given
 // address. The match is case sensitive!
-pub fn (msg *Message) Match(addr string) bool {
-	exp := getRegEx(msg.Address)
-	return exp.MatchString(addr)
+pub fn (msg *Message) matches(addr string) bool {
+	exp := get_reg_ex(msg.Address)
+	return exp.matches_string(addr)
 }
 
 // TypeTags returns the type tag string.
-pub fn (msg *Message) TypeTags() (string, error) {
+pub fn (msg *Message) type_tags() (string, error) {
 	if msg == nil {
 		return "", fmt.Errorf("message is nil")
 	}
 
 	tags := ","
 	for _, m := range msg.Arguments {
-		s, err := getTypeTag(m)
+		s, err := get_type_tag(m)
 		if err != nil {
 			return "", err
 		}
@@ -245,7 +245,7 @@ pub fn (msg *Message) String() string {
 		return ""
 	}
 
-	tags, err := msg.TypeTags()
+	tags, err := msg.type_tags()
 	if err != nil {
 		return ""
 	}
@@ -272,7 +272,7 @@ pub fn (msg *Message) String() string {
 		case Timetag:
 			formatString += " %d"
 			timeTag := arg.(Timetag)
-			args = append(args, timeTag.TimeTag())
+			args = append(args, timeTag.time_tag())
 		}
 	}
 
@@ -280,7 +280,7 @@ pub fn (msg *Message) String() string {
 }
 
 // CountArguments returns the number of arguments.
-pub fn (msg *Message) CountArguments() int {
+pub fn (msg *Message) count_arguments() int {
 	return len(msg.Arguments)
 }
 
@@ -289,10 +289,10 @@ pub fn (msg *Message) CountArguments() int {
 // 1. OSC Address Pattern
 // 2. OSC Type Tag String
 // 3. OSC Arguments
-pub fn (msg *Message) MarshalBinary() ([]byte, error) {
+pub fn (msg *Message) marshal_binary() ([]byte, error) {
 	// We can start with the OSC address and add it to the buffer
 	data := new(bytes.Buffer)
-	if _, err := writePaddedString(msg.Address, data); err != nil {
+	if _, err := write_padded_string(msg.Address, data); err != nil {
 		return nil, err
 	}
 
@@ -319,64 +319,64 @@ pub fn (msg *Message) MarshalBinary() ([]byte, error) {
 
 		case int32:
 			typetags = append(typetags, 'i')
-			if err := binary.Write(payload, binary.BigEndian, int32(t)); err != nil {
+			if err := binary.write(payload, binary.BigEndian, int32(t)); err != nil {
 				return nil, err
 			}
 
 		case float32:
 			typetags = append(typetags, 'f')
-			if err := binary.Write(payload, binary.BigEndian, float32(t)); err != nil {
+			if err := binary.write(payload, binary.BigEndian, float32(t)); err != nil {
 				return nil, err
 			}
 
 		case string:
 			typetags = append(typetags, 's')
-			if _, err := writePaddedString(t, payload); err != nil {
+			if _, err := write_padded_string(t, payload); err != nil {
 				return nil, err
 			}
 
 		case []byte:
 			typetags = append(typetags, 'b')
-			if _, err := writeBlob(t, payload); err != nil {
+			if _, err := write_blob(t, payload); err != nil {
 				return nil, err
 			}
 
 		case int64:
 			typetags = append(typetags, 'h')
-			if err := binary.Write(payload, binary.BigEndian, int64(t)); err != nil {
+			if err := binary.write(payload, binary.BigEndian, int64(t)); err != nil {
 				return nil, err
 			}
 
 		case float64:
 			typetags = append(typetags, 'd')
-			if err := binary.Write(payload, binary.BigEndian, float64(t)); err != nil {
+			if err := binary.write(payload, binary.BigEndian, float64(t)); err != nil {
 				return nil, err
 			}
 
 		case Timetag:
 			typetags = append(typetags, 't')
 			timeTag := arg.(Timetag)
-			b, err := timeTag.MarshalBinary()
+			b, err := timeTag.marshal_binary()
 			if err != nil {
 				return nil, err
 			}
-			if _, err = payload.Write(b); err != nil {
+			if _, err = payload.write(b); err != nil {
 				return nil, err
 			}
 		}
 	}
 
 	// Write the type tag string to the data buffer
-	if _, err := writePaddedString(string(typetags), data); err != nil {
+	if _, err := write_padded_string(string(typetags), data); err != nil {
 		return nil, err
 	}
 
 	// Write the payload (OSC arguments) to the data buffer
-	if _, err := data.Write(payload.Bytes()); err != nil {
+	if _, err := data.write(payload.bytes()); err != nil {
 		return nil, err
 	}
 
-	return data.Bytes(), nil
+	return data.bytes(), nil
 }
 
 ////
@@ -385,8 +385,8 @@ pub fn (msg *Message) MarshalBinary() ([]byte, error) {
 
 // NewBundle returns an OSC Bundle. Use this function to create a new OSC
 // Bundle.
-pub fn NewBundle(time time.Time) *Bundle {
-	return &Bundle{Timetag: *NewTimetag(time)}
+pub fn new_bundle(time time.Time) *Bundle {
+	return &Bundle{Timetag: *new_timetag(time)}
 }
 
 // Append appends an OSC bundle or OSC message to the bundle.
@@ -413,60 +413,60 @@ pub fn (b *Bundle) append(pck Packet) error {
 // 4. First bundle element
 // 5. Length of n OSC bundle element
 // 6. n bundle element
-pub fn (b *Bundle) MarshalBinary() ([]byte, error) {
+pub fn (b *Bundle) marshal_binary() ([]byte, error) {
 	// Add the '#bundle' string
 	data := new(bytes.Buffer)
-	if _, err := writePaddedString("#bundle", data); err != nil {
+	if _, err := write_padded_string("#bundle", data); err != nil {
 		return nil, err
 	}
 
 	// Add the time tag
-	bd, err := b.Timetag.MarshalBinary()
+	bd, err := b.Timetag.marshal_binary()
 	if err != nil {
 		return nil, err
 	}
-	if _, err = data.Write(bd); err != nil {
+	if _, err = data.write(bd); err != nil {
 		return nil, err
 	}
 
 	// Process all OSC Messages
 	for _, m := range b.Messages {
-		buf, err := m.MarshalBinary()
+		buf, err := m.marshal_binary()
 		if err != nil {
 			return nil, err
 		}
 
 		// Append the length of the OSC message
-		if err = binary.Write(data, binary.BigEndian, int32(len(buf))); err != nil {
+		if err = binary.write(data, binary.BigEndian, int32(len(buf))); err != nil {
 			return nil, err
 		}
 
 		// Append the OSC message
-		if _, err = data.Write(buf); err != nil {
+		if _, err = data.write(buf); err != nil {
 			return nil, err
 		}
 	}
 
 	// Process all OSC Bundles
 	for _, b := range b.Bundles {
-		buf, err := b.MarshalBinary()
+		buf, err := b.marshal_binary()
 		if err != nil {
 			return nil, err
 		}
 
 		// Write the size of the bundle
-		if err = binary.Write(data, binary.BigEndian, int32(len(buf))); err != nil {
+		if err = binary.write(data, binary.BigEndian, int32(len(buf))); err != nil {
 			return nil, err
 		}
 
 		// Append the bundle
-		_, err = data.Write(buf)
+		_, err = data.write(buf)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return data.Bytes(), nil
+	return data.bytes(), nil
 }
 
 ////
@@ -477,25 +477,25 @@ pub fn (b *Bundle) MarshalBinary() ([]byte, error) {
 // messages and OSC bundles over an UDP network connection. The `ip` argument
 // specifies the IP address and `port` defines the target port where the
 // messages and bundles will be send to.
-pub fn NewClient(ip string, port int) *Client {
+pub fn new_client(ip string, port int) *Client {
 	return &Client{ip: ip, port: port, laddr: nil}
 }
 
 // IP returns the IP address.
-pub fn (c *Client) IP() string { return c.ip }
+pub fn (c *Client) ip() string { return c.ip }
 
 // SetIP sets a new IP address.
-pub fn (c *Client) SetIP(ip string) { c.ip = ip }
+pub fn (c *Client) set_ip(ip string) { c.ip = ip }
 
 // Port returns the port.
-pub fn (c *Client) Port() int { return c.port }
+pub fn (c *Client) port() int { return c.port }
 
 // SetPort sets a new port.
-pub fn (c *Client) SetPort(port int) { c.port = port }
+pub fn (c *Client) set_port(port int) { c.port = port }
 
 // SetLocalAddr sets the local address.
-pub fn (c *Client) SetLocalAddr(ip string, port int) error {
-	laddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", ip, port))
+pub fn (c *Client) set_local_addr(ip string, port int) error {
+	laddr, err := net.resolve_udpaddr("udp", fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
 		return err
 	}
@@ -504,23 +504,23 @@ pub fn (c *Client) SetLocalAddr(ip string, port int) error {
 }
 
 // Send sends an OSC Bundle or an OSC Message.
-pub fn (c *Client) Send(packet Packet) error {
-	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", c.ip, c.port))
+pub fn (c *Client) send(packet Packet) error {
+	addr, err := net.resolve_udpaddr("udp", fmt.Sprintf("%s:%d", c.ip, c.port))
 	if err != nil {
 		return err
 	}
-	conn, err := net.DialUDP("udp", c.laddr, addr)
+	conn, err := net.dial_udp("udp", c.laddr, addr)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer conn.close()
 
-	data, err := packet.MarshalBinary()
+	data, err := packet.marshal_binary()
 	if err != nil {
 		return err
 	}
 
-	if _, err = conn.Write(data); err != nil {
+	if _, err = conn.write(data); err != nil {
 		return err
 	}
 	return nil
@@ -532,37 +532,37 @@ pub fn (c *Client) Send(packet Packet) error {
 
 // ListenAndServe retrieves incoming OSC packets and dispatches the retrieved
 // OSC packets.
-pub fn (s *Server) ListenAndServe() error {
-	defer s.CloseConnection()
+pub fn (s *Server) listen_and_serve() error {
+	defer s.close_connection()
 
 	if s.Dispatcher == nil {
-		s.Dispatcher = NewStandardDispatcher()
+		s.Dispatcher = new_standard_dispatcher()
 	}
 
-	ln, err := net.ListenPacket("udp", s.Addr)
+	ln, err := net.listen_packet("udp", s.Addr)
 	if err != nil {
 		return err
 	}
 
 	s.close = ln.Close
 
-	return s.Serve(ln)
+	return s.serve(ln)
 }
 
 // Serve retrieves incoming OSC packets from the given connection and dispatches
 // retrieved OSC packets. If something goes wrong an error is returned.
-pub fn (s *Server) Serve(c net.PacketConn) error {
+pub fn (s *Server) serve(c net.PacketConn) error {
 	var tempDelay time.Duration
 	for {
-		msg, err := s.readFromConnection(c)
+		msg, err := s.read_from_connection(c)
 		if err != nil {
-			if ne, ok := err.(net.Error); ok && ne.Temporary() {
+			if ne, ok := err.(net.error); ok && ne.temporary() {
 				if tempDelay == 0 {
-					tempDelay = 5 * time.Millisecond
+					tempDelay = 5 * time.millisecond
 				} else {
 					tempDelay *= 2
 				}
-				if max := 1 * time.Second; tempDelay > max {
+				if max := 1 * time.second; tempDelay > max {
 					tempDelay = max
 				}
 				time.Sleep(tempDelay)
@@ -571,7 +571,7 @@ pub fn (s *Server) Serve(c net.PacketConn) error {
 			return err
 		}
 		tempDelay = 0
-		go s.Dispatcher.Dispatch(msg)
+		go s.Dispatcher.dispatch(msg)
 	}
 }
 
@@ -579,7 +579,7 @@ pub fn (s *Server) Serve(c net.PacketConn) error {
 //
 // This causes a "use of closed network connection" error the next time the
 // server attempts to read from the connection.
-pub fn (s *Server) CloseConnection() error {
+pub fn (s *Server) close_connection() error {
 	if s.close == nil {
 		return nil
 	}
@@ -587,7 +587,7 @@ pub fn (s *Server) CloseConnection() error {
 	err := s.close()
 	// If we get "use of closed network connection", it's not a problem because
 	// closing the network connection is exactly what we wanted to do!
-	if err != nil && !strings.Contains(
+	if err != nil && !strings.contains(
 		err.Error(), "use of closed network connection",
 	) {
 		return err
@@ -597,25 +597,25 @@ pub fn (s *Server) CloseConnection() error {
 }
 
 // ReceivePacket listens for incoming OSC packets and returns the packet if one is received.
-pub fn (s *Server) ReceivePacket(c net.PacketConn) (Packet, error) {
-	return s.readFromConnection(c)
+pub fn (s *Server) receive_packet(c net.PacketConn) (Packet, error) {
+	return s.read_from_connection(c)
 }
 
 // readFromConnection retrieves OSC packets.
-fn (s *Server) readFromConnection(c net.PacketConn) (Packet, error) {
+fn (s *Server) read_from_connection(c net.PacketConn) (Packet, error) {
 	if s.ReadTimeout != 0 {
-		if err := c.SetReadDeadline(time.Now().Add(s.ReadTimeout)); err != nil {
+		if err := c.set_read_deadline(time.now().add(s.read_timeout)); err != nil {
 			return nil, err
 		}
 	}
 
 	data := make([]byte, 65535)
-	n, _, err := c.ReadFrom(data)
+	n, _, err := c.read_from(data)
 	if err != nil {
 		return nil, err
 	}
 
-	p, err := readPacket(bufio.new_reader(bytes.new_buffer(data[0:n])))
+	p, err := read_packet(bufio.new_reader(bytes.new_buffer(data[0:n])))
 	if err != nil {
 		return nil, err
 	}
@@ -623,8 +623,8 @@ fn (s *Server) readFromConnection(c net.PacketConn) (Packet, error) {
 }
 
 // ParsePacket parses the given msg string and returns a Packet
-pub fn ParsePacket(msg string) (Packet, error) {
-	p, err := readPacket(bufio.new_reader(bytes.new_bufferString(msg)))
+pub fn parse_packet(msg string) (Packet, error) {
+	p, err := read_packet(bufio.new_reader(bytes.new_bufferString(msg)))
 	if err != nil {
 		return nil, err
 	}
@@ -632,7 +632,7 @@ pub fn ParsePacket(msg string) (Packet, error) {
 }
 
 // receivePacket receives an OSC packet from the given reader.
-fn readPacket(reader *bufio.Reader) (Packet, error) {
+fn read_packet(reader *bufio.Reader) (Packet, error) {
 	//var buf []byte
 	buf, err := reader.Peek(1)
 	if err != nil {
@@ -641,14 +641,14 @@ fn readPacket(reader *bufio.Reader) (Packet, error) {
 
 	// An OSC Message starts with a '/'
 	if buf[0] == '/' {
-		packet, err := readMessage(reader)
+		packet, err := read_message(reader)
 		if err != nil {
 			return nil, err
 		}
 		return packet, nil
 	}
 	if buf[0] == '#' { // An OSC bundle starts with a '#'
-		packet, err := readBundle(reader)
+		packet, err := read_bundle(reader)
 		if err != nil {
 			return nil, err
 		}
@@ -660,39 +660,39 @@ fn readPacket(reader *bufio.Reader) (Packet, error) {
 }
 
 // readBundle reads an Bundle from reader.
-fn readBundle(reader *bufio.Reader) (*Bundle, error) {
+fn read_bundle(reader *bufio.Reader) (*Bundle, error) {
 	// Read the '#bundle' OSC string
-	startTag, _, err := readPaddedString(reader)
+	startTag, _, err := read_padded_string(reader)
 	if err != nil {
 		return nil, err
 	}
 
-	if startTag != bundleTagString {
+	if startTag != bundle_tag_string {
 		return nil, fmt.Errorf("invalid bundle start tag: %s", startTag)
 	}
 
 	// Read the timetag
 	var timeTag uint64
-	if err := binary.Read(reader, binary.BigEndian, &timeTag); err != nil {
+	if err := binary.read(reader, binary.big_endian, &timeTag); err != nil {
 		return nil, err
 	}
 
 	// Create a new bundle
-	bundle := NewBundle(timetagToTime(timeTag))
+	bundle := new_bundle(timetag_to_time(timeTag))
 
 	// Read until the end of the buffer
-	for reader.Buffered() > 0 {
+	for reader.buffered() > 0 {
 		// Read the size of the bundle element
 		var length int32
-		if err := binary.Read(reader, binary.BigEndian, &length); err != nil {
+		if err := binary.read(reader, binary.big_endian, &length); err != nil {
 			return nil, err
 		}
 
-		p, err := readPacket(reader)
+		p, err := read_packet(reader)
 		if err != nil {
 			return nil, err
 		}
-		if err = bundle.Append(p); err != nil {
+		if err = bundle.append(p); err != nil {
 			return nil, err
 		}
 	}
@@ -701,16 +701,16 @@ fn readBundle(reader *bufio.Reader) (*Bundle, error) {
 }
 
 // readMessage from `reader`.
-fn readMessage(reader *bufio.Reader) (*Message, error) {
+fn read_message(reader *bufio.Reader) (*Message, error) {
 	// First, read the OSC address
-	addr, _, err := readPaddedString(reader)
+	addr, _, err := read_padded_string(reader)
 	if err != nil {
 		return nil, err
 	}
 
 	// Read all arguments
-	msg := NewMessage(addr)
-	if err = readArguments(msg, reader); err != nil {
+	msg := new_message(addr)
+	if err = read_arguments(msg, reader); err != nil {
 		return nil, err
 	}
 
@@ -718,9 +718,9 @@ fn readMessage(reader *bufio.Reader) (*Message, error) {
 }
 
 // readArguments from `reader` and add them to the OSC message `msg`.
-fn readArguments(msg *Message, reader *bufio.Reader) error {
+fn read_arguments(msg *Message, reader *bufio.Reader) error {
 	// Read the type tag string
-	typetags, _, err := readPaddedString(reader)
+	typetags, _, err := read_padded_string(reader)
 	if err != nil {
 		return err
 	}
@@ -744,62 +744,62 @@ fn readArguments(msg *Message, reader *bufio.Reader) error {
 
 		case 'i': // int32
 			var i int32
-			if err = binary.Read(reader, binary.BigEndian, &i); err != nil {
+			if err = binary.read(reader, binary.BigEndian, &i); err != nil {
 				return err
 			}
-			msg.Append(i)
+			msg.append(i)
 
 		case 'h': // int64
 			var i int64
-			if err = binary.Read(reader, binary.BigEndian, &i); err != nil {
+			if err = binary.read(reader, binary.BigEndian, &i); err != nil {
 				return err
 			}
-			msg.Append(i)
+			msg.append(i)
 
 		case 'f': // float32
 			var f float32
-			if err = binary.Read(reader, binary.BigEndian, &f); err != nil {
+			if err = binary.read(reader, binary.BigEndian, &f); err != nil {
 				return err
 			}
-			msg.Append(f)
+			msg.append(f)
 
 		case 'd': // float64/double
 			var d float64
-			if err = binary.Read(reader, binary.BigEndian, &d); err != nil {
+			if err = binary.read(reader, binary.BigEndian, &d); err != nil {
 				return err
 			}
-			msg.Append(d)
+			msg.append(d)
 
 		case 's': // string
 			// TODO: fix reading string value
 			var s string
-			if s, _, err = readPaddedString(reader); err != nil {
+			if s, _, err = read_padded_string(reader); err != nil {
 				return err
 			}
-			msg.Append(s)
+			msg.append(s)
 
 		case 'b': // blob
 			var buf []byte
-			if buf, _, err = readBlob(reader); err != nil {
+			if buf, _, err = read_blob(reader); err != nil {
 				return err
 			}
-			msg.Append(buf)
+			msg.append(buf)
 
 		case 't': // OSC time tag
 			var tt uint64
-			if err = binary.Read(reader, binary.BigEndian, &tt); err != nil {
+			if err = binary.read(reader, binary.big_endian, &tt); err != nil {
 				return nil
 			}
-			msg.Append(*NewTimetagFromTimetag(tt))
+			msg.append(*new_timetag_from_timetag(tt))
 
 		case 'N': // nil
-			msg.Append(nil)
+			msg.append(nil)
 
 		case 'T': // true
-			msg.Append(true)
+			msg.append(true)
 
 		case 'F': // false
-			msg.Append(false)
+			msg.append(false)
 		}
 	}
 
@@ -811,67 +811,67 @@ fn readArguments(msg *Message, reader *bufio.Reader) error {
 ////
 
 // NewTimetag returns a new OSC time tag object.
-pub fn NewTimetag(ts time.Time) *Timetag {
+pub fn new_timetag(ts time.Time) *Timetag {
 	return &Timetag{
 		time:     ts,
-		timeTag:  timeToTimetag(ts),
+		timeTag:  time_to_timetag(ts),
 		MinValue: uint64(1)}
 }
 
 // NewTimetagFromTimetag creates a new Timetag from the given `timetag`.
-pub fn NewTimetagFromTimetag(timetag uint64) *Timetag {
-	time := timetagToTime(timetag)
-	return NewTimetag(time)
+pub fn new_timetag_from_timetag(timetag uint64) *Timetag {
+	time := timetag_to_time(timetag)
+	return new_timetag(time)
 }
 
 // Time returns the time.
-pub fn (t *Timetag) Time() time.Time {
+pub fn (t *Timetag) time() time.Time {
 	return t.time
 }
 
 // FractionalSecond returns the last 32 bits of the OSC time tag. Specifies the
 // fractional part of a second.
-pub fn (t *Timetag) FractionalSecond() uint32 {
+pub fn (t *Timetag) fractional_second() uint32 {
 	return uint32(t.timeTag << 32)
 }
 
 // SecondsSinceEpoch returns the first 32 bits (the number of seconds since the
 // midnight 1900) from the OSC time tag.
-pub fn (t *Timetag) SecondsSinceEpoch() uint32 {
+pub fn (t *Timetag) seconds_since_epoch() uint32 {
 	return uint32(t.timeTag >> 32)
 }
 
 // TimeTag returns the time tag value
-pub fn (t *Timetag) TimeTag() uint64 {
+pub fn (t *Timetag) time_tag() uint64 {
 	return t.timeTag
 }
 
 // MarshalBinary converts the OSC time tag to a byte array.
-pub fn (t *Timetag) MarshalBinary() ([]byte, error) {
+pub fn (t *Timetag) marshal_binary() ([]byte, error) {
 	data := new(bytes.Buffer)
-	if err := binary.Write(data, binary.BigEndian, t.timeTag); err != nil {
+	if err := binary.write(data, binary.big_endian, t.timeTag); err != nil {
 		return []byte{}, err
 	}
-	return data.Bytes(), nil
+	return data.bytes(), nil
 }
 
 // SetTime sets the value of the OSC time tag.
-pub fn (t *Timetag) SetTime(time time.Time) {
+pub fn (t *Timetag) set_time(time time.Time) {
 	t.time = time
-	t.timeTag = timeToTimetag(time)
+	t.timeTag = time_to_timetag(time)
 }
 
 // ExpiresIn calculates the number of seconds until the current time is the
 // same as the value of the time tag. It returns zero if the value of the
 // time tag is in the past.
-pub fn (t *Timetag) ExpiresIn() time.Duration {
+pub fn (t *Timetag) expires_in() time.Duration {
 	// If the timetag is one the OSC method must be invoke immediately.
 	// See https://ccrma.stanford.edu/groups/osc/spec-1_0.html#timetags.
 	if t.timeTag <= 1 {
 		return 0
 	}
 
-	tt := timetagToTime(t.timeTag)
+	tt := timetag_to_time(t.timeTag)
 	seconds := time.Until(tt)
 
 	// Invoke the OSC method immediately if the timetag is before or equal to the current time
@@ -894,8 +894,8 @@ pub fn (t *Timetag) ExpiresIn() time.Duration {
 // significant bit is a special case meaning "immediately."
 //
 // See also https://ccrma.stanford.edu/groups/osc/spec-1_0.html#timetags.
-fn timeToTimetag(v time.Time) (timetag uint64) {
-	if v.IsZero() {
+fn time_to_timetag(v time.Time) (timetag uint64) {
+	if v.is_zero() {
 		// Means "immediately". It cannot occur otherwise as timetag == 0 gets
 		// converted to January 1, 1900 while time.Time{} means year 1 in Go.
 		// Use the IsZero method to detect it.
@@ -903,13 +903,13 @@ fn timeToTimetag(v time.Time) (timetag uint64) {
 	}
 
 	seconds := uint64(v.Unix() + secondsFrom1900To1970)
-	secondFraction := float64(v.Nanosecond()) / nanosecondsPerFraction
+	secondFraction := float64(v.nanosecond()) / nanosecondsPerFraction
 
 	return (seconds << 32) + uint64(uint32(secondFraction))
 }
 
 // timetagToTime converts the given OSC timetag to a time object.
-fn timetagToTime(timetag uint64) (t time.Time) {
+fn timetag_to_time(timetag uint64) (t time.Time) {
 	// Special case when timetag is == 1 that means "immediately". In this case we return
 	// the zero time instant.
 	if timetag == 1 {
@@ -931,10 +931,10 @@ fn timetagToTime(timetag uint64) (t time.Time) {
 
 // readBlob reads an OSC blob from the blob byte array. Padding bytes are
 // removed from the reader and not returned.
-fn readBlob(reader *bufio.Reader) ([]byte, int, error) {
+fn read_blob(reader *bufio.Reader) ([]byte, int, error) {
 	// First, get the length
 	var blobLen int32
-	if err := binary.Read(reader, binary.BigEndian, &blobLen); err != nil {
+	if err := binary.read(reader, binary.BigEndian, &blobLen); err != nil {
 		return nil, 0, err
 	}
 	n := 4 + int(blobLen)
@@ -945,16 +945,16 @@ fn readBlob(reader *bufio.Reader) ([]byte, int, error) {
 
 	// Read the data
 	blob := make([]byte, blobLen)
-	if _, err := reader.Read(blob); err != nil {
+	if _, err := reader.read(blob); err != nil {
 		return nil, 0, err
 	}
 
 	// Remove the padding bytes
-	numPadBytes := padBytesNeeded(int(blobLen))
+	numPadBytes := pad_bytes_needed(int(blobLen))
 	if numPadBytes > 0 {
 		n += numPadBytes
 		dummy := make([]byte, numPadBytes)
-		if _, err := reader.Read(dummy); err != nil {
+		if _, err := reader.read(dummy); err != nil {
 			return nil, 0, err
 		}
 	}
@@ -964,23 +964,23 @@ fn readBlob(reader *bufio.Reader) ([]byte, int, error) {
 
 // writeBlob writes the data byte array as an OSC blob into buff. If the length
 // of data isn't 32-bit aligned, padding bytes will be added.
-fn writeBlob(data []byte, buf *bytes.Buffer) (int, error) {
+fn write_blob(data []byte, buf *bytes.Buffer) (int, error) {
 	// Add the size of the blob
 	dlen := int32(len(data))
-	if err := binary.Write(buf, binary.BigEndian, dlen); err != nil {
+	if err := binary.write(buf, binary.BigEndian, dlen); err != nil {
 		return 0, err
 	}
 
 	// Write the data
-	if _, err := buf.Write(data); err != nil {
+	if _, err := buf.write(data); err != nil {
 		return 0, nil
 	}
 
 	// Add padding bytes if necessary
-	numPadBytes := padBytesNeeded(len(data))
+	numPadBytes := pad_bytes_needed(len(data))
 	if numPadBytes > 0 {
 		padBytes := make([]byte, numPadBytes)
-		n, err := buf.Write(padBytes)
+		n, err := buf.write(padBytes)
 		if err != nil {
 			return 0, err
 		}
@@ -992,20 +992,20 @@ fn writeBlob(data []byte, buf *bytes.Buffer) (int, error) {
 
 // readPaddedString reads a padded string from the given reader. The padding
 // bytes are removed from the reader.
-fn readPaddedString(reader *bufio.Reader) (string, int, error) {
+fn read_padded_string(reader *bufio.Reader) (string, int, error) {
 	// Read the string from the reader
-	str, err := reader.ReadString(0)
+	str, err := reader.read_string(0)
 	if err != nil {
 		return "", 0, err
 	}
 	n := len(str)
 
 	// Remove the padding bytes (leaving the null delimiter)
-	padLen := padBytesNeeded(len(str))
+	padLen := pad_bytes_needed(len(str))
 	if padLen > 0 {
 		n += padLen
 		padBytes := make([]byte, padLen)
-		if _, err = reader.Read(padBytes); err != nil {
+		if _, err = reader.read(padBytes); err != nil {
 			return "", 0, err
 		}
 	}
@@ -1016,28 +1016,28 @@ fn readPaddedString(reader *bufio.Reader) (string, int, error) {
 
 // writePaddedString writes a string with padding bytes to the a buffer.
 // Returns, the number of written bytes and an error if any.
-fn writePaddedString(str string, buf *bytes.Buffer) (int, error) {
+fn write_padded_string(str string, buf *bytes.Buffer) (int, error) {
 	// Truncate at the first null, just in case there is more than one present
 	nullIndex := strings.Index(str, "\x00")
 	if nullIndex > 0 {
 		str = str[:nullIndex]
 	}
 	// Write the string to the buffer
-	n, err := buf.WriteString(str)
+	n, err := buf.write_string(str)
 	if err != nil {
 		return 0, err
 	}
 
 	// Always write a null terminator, as we stripped it earlier if it existed
-	buf.WriteByte(0)
+	buf.write_byte(0)
 	n++
 
 	// Calculate the padding bytes needed and create a buffer for the padding bytes
-	numPadBytes := padBytesNeeded(n)
+	numPadBytes := pad_bytes_needed(n)
 	if numPadBytes > 0 {
 		padBytes := make([]byte, numPadBytes)
 		// Add the padding bytes to the buffer
-		n, err := buf.Write(padBytes)
+		n, err := buf.write(padBytes)
 		if err != nil {
 			return 0, err
 		}
@@ -1049,7 +1049,7 @@ fn writePaddedString(str string, buf *bytes.Buffer) (int, error) {
 
 // padBytesNeeded determines how many bytes are needed to fill up to the next 4
 // byte length.
-fn padBytesNeeded(elementLen int) int {
+fn pad_bytes_needed(elementLen int) int {
 	return ((4 - (elementLen % 4)) % 4)
 }
 
@@ -1058,12 +1058,12 @@ fn padBytesNeeded(elementLen int) int {
 ////
 
 // PrintMessage pretty prints an OSC message to the standard output.
-pub fn PrintMessage(msg *Message) {
+pub fn print_message(msg *Message) {
 	fmt.Println(msg)
 }
 
 // addressExists returns true if the OSC address `addr` is found in `handlers`.
-fn addressExists(addr string, handlers map[string]Handler) bool {
+fn address_exists(addr string, handlers map[string]Handler) bool {
 	for h := range handlers {
 		if h == addr {
 			return true
@@ -1074,7 +1074,7 @@ fn addressExists(addr string, handlers map[string]Handler) bool {
 
 // getRegEx compiles and returns a regular expression object for the given
 // address `pattern`.
-fn getRegEx(pattern string) *regexp.Regexp {
+fn get_reg_ex(pattern string) *regexp.Regexp {
 	for _, trs := range []struct {
 		old, new string
 	}{
@@ -1087,14 +1087,14 @@ fn getRegEx(pattern string) *regexp.Regexp {
 		{"}", ")"},  // Change a '}' to ')'
 		{"?", "."},  // Change a '?' to '.'
 	} {
-		pattern = strings.Replace(pattern, trs.old, trs.new, -1)
+		pattern = strings.replace(pattern, trs.old, trs.new, -1)
 	}
 
-	return regexp.MustCompile(pattern)
+	return regexp.must_compile(pattern)
 }
 
 // getTypeTag returns the OSC type tag for the given argument.
-fn getTypeTag(arg interface{}) (string, error) {
+fn get_type_tag(arg interface{}) (string, error) {
 	switch t := arg.(type) {
 	case bool:
 		if arg.(bool) {
