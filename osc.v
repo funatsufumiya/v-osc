@@ -3,6 +3,7 @@
 module osc
 
 import net
+import encoding
 import time
 
 // import (
@@ -19,9 +20,9 @@ import time
 // 	"time"
 // )
 
-const secondsFrom1900To1970  = 2208988800                      // Source: RFC 868
-const nanosecondsPerFraction = f64(0.23283064365386962891)    // 1e9/(2^32)
-const bundleTagString       = "#bundle"
+const seconds_from_1900_to_1970  = 2208988800                      // Source: RFC 868
+const nanoseconds_per_fraction = f64(0.23283064365386962891)    // 1e9/(2^32)
+const bundle_tag_string       = "#bundle"
 
 // Packet is the interface for Message and Bundle.
 pub interface Packet {
@@ -902,8 +903,8 @@ fn time_to_timetag(v time.Time) (timetag uint64) {
 		return 1
 	}
 
-	seconds := uint64(v.Unix() + secondsFrom1900To1970)
-	secondFraction := float64(v.nanosecond()) / nanosecondsPerFraction
+	seconds := uint64(v.Unix() + seconds_from_1900_to_1970)
+	secondFraction := float64(v.nanosecond()) / nanoseconds_per_fraction
 
 	return (seconds << 32) + uint64(uint32(secondFraction))
 }
@@ -916,8 +917,8 @@ fn timetag_to_time(timetag uint64) (t time.Time) {
 		return time.Time{}
 	}
 
-	seconds := int64(timetag>>32) - secondsFrom1900To1970
-	nanoseconds := int64(nanosecondsPerFraction * float64(float64(timetag&(1<<32-1))))
+	seconds := int64(timetag>>32) - seconds_from_1900_to_1970
+	nanoseconds := int64(nanoseconds_per_fraction * float64(float64(timetag&(1<<32-1))))
 
 	return time.Unix(
 		seconds,
@@ -1078,9 +1079,9 @@ fn get_reg_ex(pattern string) *regexp.Regexp {
 	for _, trs := range []struct {
 		old, new string
 	}{
-		{".", `\.`}, // Escape all '.' in the pattern
-		{"(", `\(`}, // Escape all '(' in the pattern
-		{")", `\)`}, // Escape all ')' in the pattern
+		{".", "\\."}, // Escape all '.' in the pattern
+		{"(", "\\("}, // Escape all '(' in the pattern
+		{")", "\\)"}, // Escape all ')' in the pattern
 		{"*", ".*"}, // Replace a '*' with '.*' that matches zero or more chars
 		{"{", "("},  // Change a '{' to '('
 		{",", "|"},  // Change a ',' to '|'
