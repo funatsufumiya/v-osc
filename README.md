@@ -1,5 +1,9 @@
 # V OSC
 
+> [!WARNING]
+> This project is WORK IN PROGRESS. Not ready for use.
+> Please use [vosc](https://github.com/funatsufumiya/vosc) instead now.
+
 [Open Sound Control (OSC)](http://opensoundcontrol.org) library for V language. Implemented in pure V.
 
 Ported from [go-osc](https://github.com/hypebeast/go-osc).
