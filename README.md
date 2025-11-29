@@ -1,4 +1,4 @@
-# V OSC
+# V OSC (go-osc port)
 
 > [!WARNING]
 > This project is WORK IN PROGRESS. Not ready for use.<br>
@@ -79,3 +79,4 @@ fn main() {
 ```bash
 $ v test .
 ```
+
