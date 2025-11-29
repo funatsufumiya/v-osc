@@ -1,7 +1,7 @@
 # V OSC (go-osc port)
 
 > [!WARNING]
-> This project is WORK IN PROGRESS. Not ready for use.<br>
+> ***WORK IN PROGRESS. Not ready for use.***<br>
 > Please use [vosc](https://github.com/funatsufumiya/vosc) instead now.
 
 [Open Sound Control (OSC)](http://opensoundcontrol.org) library for V language. Implemented in pure V.
@@ -79,4 +79,5 @@ fn main() {
 ```bash
 $ v test .
 ```
+
 
