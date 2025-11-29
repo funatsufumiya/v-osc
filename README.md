@@ -43,12 +43,12 @@ see [examples/example_sender/main.v](./examples/example_sender/main.v)
 import osc
 
 fn main() {
-    client := osc.NewClient("localhost", 8765)
-    msg := osc.NewMessage("/osc/address")
-    msg.Append(int32(111))
-    msg.Append(true)
-    msg.Append("hello")
-    client.Send(msg)
+    client := osc.new_client("localhost", 8765)
+    msg := osc.new_message("/osc/address")
+    msg.append(int32(111))
+    msg.append(true)
+    msg.append("hello")
+    client.send(msg)
 }
 ```
 
@@ -61,16 +61,16 @@ import osc
 
 fn main() {
     addr := "127.0.0.1:8765"
-    d := osc.NewStandardDispatcher()
-    d.AddMsgHandler("/message/address", fn(msg *osc.Message) {
-        osc.PrintMessage(msg)
+    d := osc.new_standard_dispatcher()
+    d.add_msg_handler("/message/address", fn(msg *osc.Message) {
+        osc.print_message(msg)
     })
 
-    server := &osc.Server{
-        Addr: addr,
-        Dispatcher:d,
+    server := &osc.server{
+        addr: addr,
+        dispatcher:d,
     }
-    server.ListenAndServe()
+    server.listen_and_serve()
 }
 ```
 
