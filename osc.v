@@ -38,7 +38,7 @@ pub mut:
 }
 
 // Verify that Messages implements the Packet interface.
-var _ Packet = (*Message)(nil)
+var _ Packet = (&Message)(nil)
 
 // Bundle represents an OSC bundle. It consists of the OSC-string "#bundle"
 // followed by an OSC Time Tag, followed by zero or more OSC bundle/message
@@ -47,7 +47,7 @@ var _ Packet = (*Message)(nil)
 pub struct Bundle {
 pub mut:
 	timetag  Timetag
-	messages []*Message
+	messages []&Message
 	bundles  []*Bundle
 }
 
@@ -94,16 +94,16 @@ interface Dispatcher {
 // Handler is an interface for message handlers. Every handler implementation
 // for an OSC message must implement this interface.
 interface Handler {
-	HandleMessage(msg *Message)
+	HandleMessage(msg &Message)
 }
 
 // HandlerFunc implements the Handler interface. Type definition for an OSC
 // handler function.
-type HandlerFunc func(msg *Message)
+type HandlerFunc func(msg &Message)
 
 // HandleMessage calls itself with the given OSC Message. Implements the
 // Handler interface.
-fn (f HandlerFunc) handle_message(msg *Message) {
+fn (f HandlerFunc) handle_message(msg &Message) {
 	f(msg)
 }
 
@@ -149,7 +149,7 @@ pub fn (s *StandardDispatcher) dispatch(packet Packet) {
 	default:
 		return
 
-	case *Message:
+	case &Message:
 		for addr, handler := range s.handlers {
 			if p.matches(addr) {
 				handler.handle_message(p)
@@ -188,42 +188,42 @@ pub fn (s *StandardDispatcher) dispatch(packet Packet) {
 ////
 
 // NewMessage returns a new Message. The address parameter is the OSC address.
-pub fn new_message(addr string, args ...interface{}) *Message {
-	return &Message{Address: addr, Arguments: args}
+pub fn new_message(addr string, args ...interface{}) Message {
+	return Message{Address: addr, Arguments: args}
 }
 
 // Append appends the given arguments to the arguments list.
-pub fn (msg *Message) append(args ...interface{}) {
+pub fn (msg &Message) append(args ...interface{}) {
 	msg.Arguments = append(msg.Arguments, args...)
 }
 
 // Equals returns true if the given OSC Message `m` is equal to the current OSC
 // Message. It checks if the OSC address and the arguments are equal. Returns
 // true if the current object and `m` are equal.
-pub fn (msg *Message) equals(m *Message) bool {
+pub fn (msg &Message) equals(m &Message) bool {
 	return reflect.deep_equal(msg, m)
 }
 
 // Clear clears the OSC address and all arguments.
-pub fn (msg *Message) clear() {
+pub fn (msg &Message) clear() {
 	msg.Address = ""
 	msg.ClearData()
 }
 
 // ClearData removes all arguments from the OSC Message.
-pub fn (msg *Message) clear_data() {
+pub fn (msg &Message) clear_data() {
 	msg.Arguments = msg.arguments[len(msg.Arguments):]
 }
 
 // matches returns true, if the OSC address pattern of the OSC Message matches the given
 // address. The match is case sensitive!
-pub fn (msg *Message) matches(addr string) bool {
+pub fn (msg &Message) matches(addr string) bool {
 	exp := get_reg_ex(msg.Address)
 	return exp.matches_string(addr)
 }
 
 // TypeTags returns the type tag string.
-pub fn (msg *Message) type_tags() (string, error) {
+pub fn (msg &Message) type_tags() (string, error) {
 	if msg == nil {
 		return "", fmt.Errorf("message is nil")
 	}
@@ -241,7 +241,7 @@ pub fn (msg *Message) type_tags() (string, error) {
 }
 
 // String implements the fmt.Stringer interface.
-pub fn (msg *Message) String() string {
+pub fn (msg &Message) String() string {
 	if msg == nil {
 		return ""
 	}
@@ -281,7 +281,7 @@ pub fn (msg *Message) String() string {
 }
 
 // CountArguments returns the number of arguments.
-pub fn (msg *Message) count_arguments() int {
+pub fn (msg &Message) count_arguments() int {
 	return len(msg.Arguments)
 }
 
@@ -290,7 +290,7 @@ pub fn (msg *Message) count_arguments() int {
 // 1. OSC Address Pattern
 // 2. OSC Type Tag String
 // 3. OSC Arguments
-pub fn (msg *Message) marshal_binary() ([]byte, error) {
+pub fn (msg &Message) marshal_binary() ([]byte, error) {
 	// We can start with the OSC address and add it to the buffer
 	data := new(bytes.Buffer)
 	if _, err := write_padded_string(msg.Address, data); err != nil {
@@ -399,7 +399,7 @@ pub fn (b *Bundle) append(pck Packet) error {
 	case *Bundle:
 		b.Bundles = append(b.Bundles, t)
 
-	case *Message:
+	case &Message:
 		b.Messages = append(b.Messages, t)
 	}
 
@@ -702,7 +702,7 @@ fn read_bundle(reader *bufio.Reader) (*Bundle, error) {
 }
 
 // readMessage from `reader`.
-fn read_message(reader *bufio.Reader) (*Message, error) {
+fn read_message(reader *bufio.Reader) (&Message, error) {
 	// First, read the OSC address
 	addr, _, err := read_padded_string(reader)
 	if err != nil {
@@ -719,7 +719,7 @@ fn read_message(reader *bufio.Reader) (*Message, error) {
 }
 
 // readArguments from `reader` and add them to the OSC message `msg`.
-fn read_arguments(msg *Message, reader *bufio.Reader) error {
+fn read_arguments(msg &Message, reader *bufio.Reader) error {
 	// Read the type tag string
 	typetags, _, err := read_padded_string(reader)
 	if err != nil {
@@ -1059,7 +1059,7 @@ fn pad_bytes_needed(elementLen int) int {
 ////
 
 // PrintMessage pretty prints an OSC message to the standard output.
-pub fn print_message(msg *Message) {
+pub fn print_message(msg &Message) {
 	fmt.Println(msg)
 }
 

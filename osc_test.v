@@ -16,48 +16,53 @@ module osc
 
 fn message_append_test() {
 	oscAddress := "/address"
-	message := NewMessage(oscAddress)
+	message := new_message(oscAddress)
 	assert message.Address == oscAddress
 
-	message.Append("string argument")
-	message.Append(123456789)
-	message.Append(true)
+	message.append("string argument")
+	message.append(123456789)
+	message.append(true)
 
 	assert message.CountArguments() == 3
 }
 
 fn message_equals_test() {
-	msg1 := NewMessage("/address")
-	msg2 := NewMessage("/address")
-	msg1.Append(1234)
-	msg2.Append(1234)
-	msg1.Append("test string")
-	msg2.Append("test string")
+	msg1 := new_message("/address")
+	msg2 := new_message("/address")
+	msg1.append(1234)
+	msg2.append(1234)
+	msg1.append("test string")
+	msg2.append("test string")
 
-	assert msg1.Equals(msg2)
+	assert msg1.equals(msg2)
 }
 
 fn message_typetags_test() {
-	for _, tt := range []struct {
+
+	struct TestData {
 		desc string
-		msg  *Message
+		msg  &Message
 		tags string
 		ok   bool
-	}{
-		{"addr_only", NewMessage("/"), ",", true},
-		{"nil", NewMessage("/", nil), ",N", true},
-		{"bool_true", NewMessage("/", true), ",T", true},
-		{"bool_false", NewMessage("/", false), ",F", true},
-		{"int32", NewMessage("/", int32(1)), ",i", true},
-		{"int64", NewMessage("/", int64(2)), ",h", true},
-		{"float32", NewMessage("/", float32(3.0)), ",f", true},
-		{"float64", NewMessage("/", float64(4.0)), ",d", true},
-		{"string", NewMessage("/", "5"), ",s", true},
-		{"[]byte", NewMessage("/", []byte{'6'}), ",b", true},
-		{"two_args", NewMessage("/", "123", int32(456)), ",si", true},
-		{"invalid_msg", nil, "", false},
-		{"invalid_arg", NewMessage("/foo/bar", 789), "", false},
-	} {
+	}
+
+	test_data := [
+		TestData{"addr_only", new_message("/"), ",", true},
+		TestData{"nil", new_message("/", nil), ",N", true},
+		TestData{"bool_true", new_message("/", true), ",T", true},
+		TestData{"bool_false", new_message("/", false), ",F", true},
+		TestData{"int32", new_message("/", int32(1)), ",i", true},
+		TestData{"int64", new_message("/", int64(2)), ",h", true},
+		TestData{"float32", new_message("/", float32(3.0)), ",f", true},
+		TestData{"float64", new_message("/", float64(4.0)), ",d", true},
+		TestData{"string", new_message("/", "5"), ",s", true},
+		TestData{"[]byte", new_message("/", `6`), ",b", true},
+		TestData{"two_args", new_message("/", "123", int32(456)), ",si", true},
+		TestData{"invalid_msg", nil, "", false},
+		TestData{"invalid_arg", new_message("/foo/bar", 789), "", false},
+	]
+
+	for tt in test_data  {
 		tags, err := tt.msg.TypeTags()
 		if err != nil && tt.ok {
 			assert false, "${tt.desc}: TypeTags() unexpected error: ${err}"
@@ -83,9 +88,9 @@ fn message_string_test() {
 		str  string
 	}{
 		{"nil", nil, ""},
-		{"addr_only", NewMessage("/foo/bar"), "/foo/bar ,"},
-		{"one_addr", NewMessage("/foo/bar", "123"), "/foo/bar ,s 123"},
-		{"two_args", NewMessage("/foo/bar", "123", int32(456)), "/foo/bar ,si 123 456"},
+		{"addr_only", new_message("/foo/bar"), "/foo/bar ,"},
+		{"one_addr", new_message("/foo/bar", "123"), "/foo/bar ,s 123"},
+		{"two_args", new_message("/foo/bar", "123", int32(456)), "/foo/bar ,si 123 456"},
 	} {
 		if got, want := tt.msg.String(), tt.str; got != want {
 			assert false, "${tt.desc}: String() = '${got}', want = '${want}'"
@@ -195,9 +200,9 @@ fn server_message_dispatching_test(stringArgument string) {
 		case <-start:
 			time.Sleep(500 * time.Millisecond)
 			client := NewClient("localhost", port)
-			msg := NewMessage("/address/test")
-			msg.Append(int32(1122))
-			msg.Append(stringArgument)
+			msg := new_message("/address/test")
+			msg.append(int32(1122))
+			msg.append(stringArgument)
 			if err := client.Send(msg); err != nil {
 				t.Error(err)
 				done.Done()
@@ -298,10 +303,10 @@ fn server_message_receiving_test(stringArgument string) {
 		case <-timeout:
 		case <-start:
 			client := NewClient("localhost", port)
-			msg := NewMessage("/address/test")
-			msg.Append(int32(1122))
-			msg.Append(int32(3344))
-			msg.Append(stringArgument)
+			msg := new_message("/address/test")
+			msg.append(int32(1122))
+			msg.append(int32(3344))
+			msg.append(stringArgument)
 			time.Sleep(500 * time.Millisecond)
 			if err := client.Send(msg); err != nil {
 				t.Error(err)
@@ -363,14 +368,14 @@ fn read_timeout_test() {
 			wg.Done()
 		case <-start:
 			client := NewClient("localhost", 6677)
-			msg := NewMessage("/address/test1")
+			msg := new_message("/address/test1")
 			err := client.Send(msg)
 			if err != nil {
 				t.Error(err)
 			}
 
 			time.Sleep(500 * time.Millisecond)
-			msg = NewMessage("/address/test2")
+			msg = new_message("/address/test2")
 			err = client.Send(msg)
 			if err != nil {
 				t.Error(err)
@@ -566,10 +571,10 @@ fn pad_bytes_needed_test() {
 }
 
 fn type_tags_string_test() {
-	msg := NewMessage("/some/address")
-	msg.Append(int32(100))
-	msg.Append(true)
-	msg.Append(false)
+	msg := new_message("/some/address")
+	msg.append(int32(100))
+	msg.append(true)
+	msg.append(false)
 
 	typeTags, err := msg.TypeTags()
 	if err != nil {
@@ -672,7 +677,7 @@ fn osc_message_match_test() {
 	}
 
 	for _, tt := range tc {
-		msg := NewMessage(tt.addr)
+		msg := new_message(tt.addr)
 
 		got := msg.Match(tt.addrPattern)
 		if got != tt.want {
@@ -756,9 +761,9 @@ fn nulls(i int) string {
 
 // makePacket creates a fake Message Packet.
 fn make_packet(addr string, args []string) Packet {
-	msg := NewMessage(addr)
+	msg := new_message(addr)
 	for _, arg := range args {
-		msg.Append(arg)
+		msg.append(arg)
 	}
 	return msg
 }
